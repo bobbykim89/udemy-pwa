@@ -22,6 +22,15 @@ function openCreatePostModal() {
 
     deferredPrompt = null
   }
+
+  // Unregister serviceworker
+  // if ('serviceWorker' in navigator) {
+  //   navigator.serviceWorker.getRegistrations().then((registrations) => {
+  //     for (let i = 0; i < registrations.length; i++) {
+  //       registrations[i].unregister()
+  //     }
+  //   })
+  // }
 }
 
 function closeCreatePostModal() {
@@ -32,15 +41,21 @@ shareImageButton.addEventListener('click', openCreatePostModal)
 
 closeCreatePostModalButton.addEventListener('click', closeCreatePostModal)
 
-// const onSavebuttonClicked = (e) => {
-//   console.log('Clicked!')
-//   if ('caches' in window) {
-//     caches.open('user-requested').then((cache) => {
-//       cache.add('https://httpbin.org/get')
-//       cache.add('/src/images/sf-boat.jpg')
-//     })
-//   }
-// }
+const onSavebuttonClicked = (e) => {
+  console.log('Clicked!')
+  if ('caches' in window) {
+    caches.open('user-requested').then((cache) => {
+      cache.add('https://httpbin.org/get')
+      cache.add('/src/images/sf-boat.jpg')
+    })
+  }
+}
+
+const clearCards = () => {
+  while (sharedMomentsArea.hasChildNodes()) {
+    sharedMomentsArea.removeChild(sharedMomentsArea.lastElementChild)
+  }
+}
 
 const createCard = () => {
   const cardWrapper = document.createElement('div')
@@ -70,10 +85,42 @@ const createCard = () => {
   sharedMomentsArea.appendChild(cardWrapper)
 }
 
-fetch('https://httpbin.org/get')
+const url = 'https://httpbin.org/post'
+let networkDataReceived = false
+
+fetch(url, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  },
+  body: JSON.stringify({
+    message: 'some message',
+  }),
+})
   .then((res) => {
     return res.json()
   })
   .then((data) => {
+    networkDataReceived = true
+    console.log('from web', data)
+    clearCards()
     createCard()
   })
+
+if ('caches' in window) {
+  caches
+    .match(url)
+    .then((res) => {
+      if (res) {
+        return res.json()
+      }
+    })
+    .then((data) => {
+      console.log('from cache', data)
+      if (!networkDataReceived) {
+        clearCards()
+        createCard()
+      }
+    })
+}
