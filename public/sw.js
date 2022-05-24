@@ -1,9 +1,13 @@
+importScripts('/src/js/idb.js')
+importScripts('/src/js/utility.js')
+
 const CACHE_STATIC_NAME = 'static-v5'
 const CACHE_DYNAMIC_NAME = 'dynamic-v3'
 const STATIC_FILES = [
   '/',
   '/index.html',
   '/offline.html',
+  '/src/js/idb.js',
   '/src/js/app.js',
   '/src/js/feed.js',
   '/src/js/material.min.js',
@@ -111,16 +115,23 @@ const isInArray = (string, array) => {
 }
 
 self.addEventListener('fetch', (event) => {
-  const url = 'https://httpbin.org/get'
+  const url = 'https://pwagram-48475-default-rtdb.firebaseio.com/posts.json'
 
   if (event.request.url.indexOf(url) > -1) {
     event.respondWith(
-      caches.open(CACHE_DYNAMIC_NAME).then((cache) => {
-        return fetch(event.request).then((res) => {
-          // trimCache(CACHE_DYNAMIC_NAME, 3)
-          cache.put(event.request, res.clone())
-          return res
-        })
+      fetch(event.request).then((res) => {
+        const clonedRes = res.clone()
+        clearAllData('posts')
+          .then(() => {
+            return clonedRes.json()
+          })
+          .then((data) => {
+            for (let key in data) {
+              writeData('posts', data[key])
+            }
+          })
+
+        return res
       })
     )
   } else if (isInArray(event.request.url, STATIC_FILES)) {
