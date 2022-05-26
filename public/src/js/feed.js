@@ -4,9 +4,15 @@ var closeCreatePostModalButton = document.querySelector(
   '#close-create-post-modal-btn'
 )
 const sharedMomentsArea = document.querySelector('#shared-moments')
+const form = document.querySelector('form')
+const titleInput = document.querySelector('#title')
+const locationInput = document.querySelector('#location')
 
 function openCreatePostModal() {
-  createPostArea.style.display = 'block'
+  // createPostArea.style.display = 'block'
+  // setTimeout(() => {
+  createPostArea.style.transform = 'translateY(0)'
+  // }, 1)
   if (deferredPrompt) {
     deferredPrompt.prompt()
 
@@ -34,7 +40,8 @@ function openCreatePostModal() {
 }
 
 function closeCreatePostModal() {
-  createPostArea.style.display = 'none'
+  createPostArea.style.transform = 'translateY(100vh)'
+  // createPostArea.style.display = 'none'
 }
 
 shareImageButton.addEventListener('click', openCreatePostModal)
@@ -116,3 +123,58 @@ if ('indexedDB' in window) {
     }
   })
 }
+
+const sendData = () => {
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      id: new Date().toISOString(),
+      title: titleInput.value,
+      location: locationInput.value,
+      image:
+        'https://firebasestorage.googleapis.com/v0/b/pwagram-48475.appspot.com/o/sf-boat.jpg?alt=media&token=bd402c1a-73c8-4e7e-87f3-a5064a9cbdb7',
+    }),
+  }).then((res) => {
+    console.log('Sent data', res)
+    updateUI()
+  })
+}
+
+form.addEventListener('submit', (event) => {
+  event.preventDefault()
+
+  if (titleInput.value.trim() === '' || locationInput.value.trim() === '') {
+    alert('Please enter valid data')
+    return
+  }
+
+  closeCreatePostModal()
+  if ('serviceWorker' in navigator && 'SyncManager' in window) {
+    navigator.serviceWorker.ready.then((sw) => {
+      const post = {
+        id: new Date().toISOString(),
+        title: titleInput.value,
+        location: locationInput.value,
+      }
+      writeData('sync-posts', post)
+        .then(() => {
+          sw.sync.register('sync-new-posts')
+        })
+        .then(() => {
+          const snackbarContainer = document.querySelector(
+            '#confirmation-toast'
+          )
+          const data = { message: 'Your Post was saved for synching!' }
+          snackbarContainer.MaterialSnackbar.showSnackbar(data)
+        })
+        .catch((err) => {
+          console.log(err)
+        })
+    })
+  } else {
+  }
+})
