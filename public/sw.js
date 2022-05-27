@@ -171,24 +171,28 @@ self.addEventListener('sync', (event) => {
     event.waitUntil(
       readAllData('sync-posts').then((data) => {
         for (let dt of data) {
-          fetch(url, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
-            },
-            body: JSON.stringify({
-              id: dt.id,
-              title: dt.title,
-              location: dt.location,
-              image:
-                'https://firebasestorage.googleapis.com/v0/b/pwagram-48475.appspot.com/o/sf-boat.jpg?alt=media&token=bd402c1a-73c8-4e7e-87f3-a5064a9cbdb7',
-            }),
-          })
+          fetch(
+            'https://us-central1-pwagram-48475.cloudfunctions.net/storePostData',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+              },
+              body: JSON.stringify({
+                id: dt.id,
+                title: dt.title,
+                location: dt.location,
+                image:
+                  'https://firebasestorage.googleapis.com/v0/b/pwagram-48475.appspot.com/o/sf-boat.jpg?alt=media&token=bd402c1a-73c8-4e7e-87f3-a5064a9cbdb7',
+              }),
+            }
+          )
             .then((res) => {
               console.log('Sent data', res)
               if (res.ok) {
                 res.json().then((resData) => {
+                  console.log('resdata', resData)
                   deleteItemFromData('sync-posts', resData.id)
                 })
               }
@@ -211,9 +215,44 @@ self.addEventListener('notificationclick', (event) => {
     notification.close()
   } else {
     console.log(action)
+    event.waitUntil(
+      clientsmatchAll().then((clis) => {
+        const client = clis.find((c) => {
+          return c.visibilityState === 'visible'
+        })
+
+        if (client !== undefined) {
+          client.navigate(notification.data.openUrl)
+          client.focus()
+        } else {
+          clients.openWindow(notification.data.openUrl)
+        }
+        notification.close()
+      })
+    )
   }
 })
 
 self.addEventListener('notificationsclose', (event) => {
   console.log('Notification was closed', event)
+})
+
+self.addEventListener('push', (event) => {
+  console.log('Push notifications received', event)
+
+  let data = { title: 'new', content: 'SOmething new happened!', openUrl: '/' }
+  if (event.data) {
+    data = JSON.parse(event.data.text())
+  }
+
+  const options = {
+    body: data.content,
+    icon: '/src/images/icons/app-icon-96x96.png',
+    badge: '/src/images/icons/app-icon-96x96.png',
+    data: {
+      url: data.openUrl,
+    },
+  }
+
+  event.waitUntil(self.registration.showNotification(data.title, options))
 })

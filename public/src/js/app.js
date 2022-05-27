@@ -58,17 +58,46 @@ const configurePushSub = () => {
   if (!'serviceWorker' in navigator) {
     return
   }
-
+  let reg
   navigator.serviceWorker.ready
     .then((swreg) => {
+      reg = swreg
       return swreg.pushManager.getSubscription()
     })
     .then((sub) => {
-      if (sub === null) {
+      if (!sub) {
         // Create a new subscription
+        const vapidPublicKey =
+          'BBYC_FGgUnPMinBWbXYKLuCEkosMmgGu2JN-nUQ1R1YFSsKMkGU10t9RnmN8ivgrZqk19kLjWuJfys9qtdHfaKU'
+        const convertedVapidPublicKey = urlBase64ToUint8Array(vapidPublicKey)
+        reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: convertedVapidPublicKey,
+        })
       } else {
         // We have a subscription
       }
+    })
+    .then((newSub) => {
+      return fetch(
+        'https://pwagram-48475-default-rtdb.firebaseio.com/subscriptions.json',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify(newSub),
+        }
+      )
+    })
+    .then((res) => {
+      if (res.ok) {
+        displayConfirmNotification()
+      }
+    })
+    .catch((err) => {
+      console.log(err)
     })
 }
 
